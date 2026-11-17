@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Tabela de produtos, apresentações e preços, com pesquisa rápida por nome ou categoria.">
+  <title>Tabela de Produtos e Preços</title>
+  <style>
+    :root {
+      --background: #070706;
+      --surface: #0d0c0a;
+      --surface-2: #17120b;
+      --border: rgba(230, 180, 79, .34);
+      --line: rgba(226, 183, 103, .18);
+      --gold: #f6cc63;
+      --gold-bright: #ffe8a5;
+      --muted: #b7aa8c;
+      --text: #f7f4ec;
+      --shadow: 0 18px 52px rgba(0,0,0,.38);
+    }
+    *,*::before,*::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; min-height: 100vh; background: var(--background); color: var(--text); font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif; }
+    body::before { content: ""; position: fixed; z-index: -1; inset: 0; pointer-events: none; background: radial-gradient(ellipse 55% 36% at 0% 1%, rgba(157,83,12,.19),transparent 72%), radial-gradient(ellipse 60% 42% at 100% 90%, rgba(133,74,14,.18),transparent 76%), linear-gradient(135deg, #0b0906 0%, #060606 60%, #0b0805 100%); }
+    button,input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, .table-scroll:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 3px; }
+    .shell { max-width: 1480px; margin: 0 auto; padding: 34px clamp(16px,3.3vw,50px) 58px; }
+    .hero { text-align: center; position: relative; padding-bottom: 27px; margin-bottom: 26px; }
+    .eyebrow { color: var(--gold); text-transform: uppercase; letter-spacing: .3em; font-weight: 700; font-size: 11px; }
+    h1 { font-family: Georgia, "Times New Roman", serif; text-transform: uppercase; font-weight: 700; font-size: clamp(27px,3.3vw,46px); letter-spacing: .025em; line-height: 1.12; margin: 13px 0 10px; background: linear-gradient(105deg,#b7761e 0%,#fff0b5 40%,#d9a43b 73%,#fff5d3 100%); -webkit-background-clip:text; background-clip:text; color: transparent; }
+    .subtitle { margin: 0; color: var(--muted); font-size: 14px; }
+    .hero::after { position: absolute; bottom: 0; left: 8%; width: 84%; height: 1px; content:""; background: linear-gradient(90deg,transparent,rgba(255,213,123,.76),transparent); box-shadow: 0 0 18px rgba(255,175,67,.35); }
+    .controls { padding: clamp(16px,2vw,26px); border: 1px solid var(--border); border-radius: 17px; background: linear-gradient(145deg,rgba(29,23,13,.91),rgba(12,11,9,.95)); box-shadow: var(--shadow); margin-bottom: 22px; }
+    .controls-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 14px; }
+    .search-label { display: block; color: #e9dbb9; font-weight: 650; font-size: 13px; letter-spacing: .01em; margin-bottom: 9px; }
+    .search-area { flex: 1 1 600px; max-width: 720px; }
+    .search-wrapper { position: relative; }
+    .search-icon { color: #dfba6a; position: absolute; top: 50%; left: 17px; transform: translateY(-50%); width: 19px; height: 19px; pointer-events: none; }
+    .search-input { color: var(--text); width: 100%; height: 52px; outline: none; border: 1px solid rgba(233,187,92,.43); border-radius: 11px; background: #090908; padding: 0 49px 0 48px; font-size: 15px; transition: border-color .2s,box-shadow .2s; }
+    .search-input::placeholder { color: #8e8675; }
+    .search-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(244,186,77,.11); }
+    .clear-search { position: absolute; display: grid; place-items: center; top: 50%; right: 9px; transform: translateY(-50%); width: 33px; height: 33px; border: 0; border-radius: 8px; background: rgba(246,204,99,.12); color: var(--gold-bright); font-size: 21px; }
+    [hidden] { display: none !important; }
+    .results { color: var(--muted); font-size: 13px; white-space: nowrap; padding-bottom: 13px; }
+    .results strong { color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+    .filter-group { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 2px; }
+    .filter-chip { background: rgba(255,255,255,.025); color: #d9cfbb; border: 1px solid #51432b; border-radius: 100px; min-height: 35px; padding: 7px 12px; font-size: 12px; font-weight: 650; transition: .16s ease; }
+    .filter-chip:hover { border-color: var(--gold); background: rgba(228,165,51,.1); }
+    .filter-chip[aria-pressed="true"] { background: linear-gradient(135deg,#ffebaa,#dca033); color: #1c1307; border-color: transparent; }
+    .filter-chip span { margin-left: 4px; font-size: 11px; opacity: .77; }
+    .catalog-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 17px; align-items: start; }
+    .catalog-grid.is-one-column { grid-template-columns: minmax(0,1fr); max-width: 900px; margin-inline: auto; }
+    .catalog-column { display: grid; gap: 17px; min-width: 0; }
+    .category-card { overflow: hidden; min-width: 0; background: linear-gradient(150deg,rgba(20,16,11,.96),rgba(7,7,6,.99) 45%); border: 1px solid rgba(232,171,70,.56); border-radius: 15px; box-shadow: 0 6px 22px rgba(0,0,0,.23), inset 0 1px rgba(255,233,165,.13); }
+    .category-header { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 15px 17px; min-height: 60px; }
+    h2 { display: flex; align-items: center; gap: 9px; margin: 0; color: var(--gold-bright); font-size: clamp(13px,1.2vw,17px); letter-spacing: .025em; font-weight: 800; line-height: 1.4; }
+    .ornament { color: #e5aa3b; font-size: 23px; line-height: 1; text-shadow: 0 0 8px rgba(255,207,99,.5); flex: 0 0 auto; }
+    .section-count { background: rgba(252,202,106,.09); color: #c7ad77; border: 1px solid rgba(244,190,73,.16); border-radius: 99px; font-size: 11px; font-weight: 700; padding: 5px 7px; white-space: nowrap; }
+    .table-scroll { max-width: 100%; overflow-x: auto; scrollbar-color: #87652b #13100a; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; min-width: 470px; font-size: clamp(12px, .9vw,14px); }
+    .type-brand { min-width: 490px; }
+    thead { background: linear-gradient(110deg,#c98419 0%,#ffe79a 48%,#edb446 88%,#aa6613 100%); color: #1c1409; }
+    thead th { padding: 11px 10px; text-align: left; text-transform: uppercase; font-size: 10px; font-weight: 850; letter-spacing: .075em; }
+    thead th:not(:last-child) { border-right: 1px solid rgba(83,49,8,.37); }
+    tbody tr { background: rgba(0,0,0,.19); transition: background-color .15s; }
+    tbody tr:nth-child(even) { background: rgba(255,255,255,.017); }
+    tbody tr:hover { background: rgba(237,179,77,.095); }
+    tbody td { border-bottom: 1px solid var(--line); padding: 9px 10px; line-height: 1.3; vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody td:not(:last-child) { border-right: 1px solid rgba(226,183,103,.1); }
+    .product-name { font-weight: 700; }
+    .brand-name { color: #e6d5b8; font-weight: 700; }
+    .presentation { color: #d2c9b7; }
+    .price { color: #f8dfab; font-weight: 750; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+    .product-table:not(.type-other) th:nth-child(1), .product-table:not(.type-other) td:nth-child(1) { width: 40%; }
+    .product-table:not(.type-other) th:nth-child(2), .product-table:not(.type-other) td:nth-child(2) { width: 32%; }
+    .product-table:not(.type-other) th:nth-child(3), .product-table:not(.type-other) td:nth-child(3) { width: 28%; }
+    .type-brand th:nth-child(1), .type-brand td:nth-child(1) { width: 24% !important; }
+    .type-brand th:nth-child(2), .type-brand td:nth-child(2) { width: 49% !important; }
+    .type-brand th:nth-child(3), .type-brand td:nth-child(3) { width: 27% !important; }
+    .type-other th:nth-child(1), .type-other td:nth-child(1) { width: 68%; }
+    .type-other th:nth-child(2), .type-other td:nth-child(2) { width: 32%; }
+    .empty { text-align: center; padding: 60px 20px; border: 1px dashed rgba(236,189,105,.42); border-radius: 14px; background: rgba(16,13,8,.82); }
+    .empty .empty-icon { font-size: 36px; color: var(--gold); }
+    .empty h2 { justify-content: center; font-size: 20px; }
+    .empty p { color: var(--muted); }
+    .reset-button { color: #120d06; border: none; background: var(--gold); padding: 11px 17px; border-radius: 8px; font-weight: 750; margin-top: 6px; }
+    footer { color: #766c5d; font-size: 12px; text-align: center; margin-top: 27px; }
+    @media(max-width: 990px) { .catalog-grid { grid-template-columns: minmax(0,1fr); } .category-card h2 { font-size: 16px; } }
+    @media(max-width: 600px) { .shell { padding: 20px 12px 40px; } .hero { margin-bottom: 16px; } .controls { border-radius: 12px; } .controls-top { align-items: flex-start; flex-direction: column; gap: 9px; } .search-area { flex-basis: auto; width: 100%; } .results { padding: 0; } .filter-group { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 7px; } .filter-chip { white-space: nowrap; flex: 0 0 auto; } .category-header { padding: 13px; } .section-count { font-size: 10px; } .category-card { border-radius: 11px; } }
+    @media(max-width: 600px) {
+      .product-table, .type-brand { min-width: 0; font-size: 10.5px; }
+      thead th { padding: 9px 5px; font-size: 8.5px; letter-spacing: 0; }
+      tbody td { padding: 8px 5px; overflow-wrap: anywhere; }
+      .price { font-size: 10px; white-space: nowrap; }
+      .product-table:not(.type-other) th:nth-child(1), .product-table:not(.type-other) td:nth-child(1) { width: 40%; }
+      .product-table:not(.type-other) th:nth-child(2), .product-table:not(.type-other) td:nth-child(2) { width: 32%; }
+      .product-table:not(.type-other) th:nth-child(3), .product-table:not(.type-other) td:nth-child(3) { width: 28%; }
+    }
+    @media(prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <span class="eyebrow">Catálogo completo</span>
+      <h1>Tabela de Produtos e Preços</h1>
+      <p class="subtitle">Consulte os produtos por nome, apresentação, marca ou categoria.</p>
+    </header>
+
+    <section class="controls" aria-label="Pesquisar e filtrar produtos">
+      <div class="controls-top">
+        <div class="search-area">
+          <label class="search-label" for="search">Buscar no catálogo</label>
+          <div class="search-wrapper">
+            <svg class="search-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+            <input class="search-input" id="search" type="search" autocomplete="off" placeholder="Ex.: GHK-CU, 10MG, Renew, Botox..." aria-controls="catalog">
+            <button class="clear-search" id="clear-search" type="button" aria-label="Limpar busca" hidden>&times;</button>
+          </div>
+        </div>
+        <div class="results" id="results" role="status" aria-live="polite"><strong>75</strong> itens encontrados</div>
+      </div>
+      <div class="filter-group" role="group" aria-label="Filtrar por seção">
+        <button type="button" class="filter-chip" data-filter="all" aria-pressed="true">Todos <span>75</span></button>
+          <button type="button" class="filter-chip" data-filter="renew" aria-pressed="false">RENEW <span>26</span></button>
+          <button type="button" class="filter-chip" data-filter="cosmeticos" aria-pressed="false">PEPTÍDEOS / COSMÉTICOS <span>8</span></button>
+          <button type="button" class="filter-chip" data-filter="toxina" aria-pressed="false">TOXINA BOTULÍNICA <span>2</span></button>
+          <button type="button" class="filter-chip" data-filter="oxygen" aria-pressed="false">OXYGEN <span>28</span></button>
+          <button type="button" class="filter-chip" data-filter="agua" aria-pressed="false">ÁGUA BACTERIOSTÁTICA <span>1</span></button>
+          <button type="button" class="filter-chip" data-filter="demais" aria-pressed="false">DEMAIS PRODUTOS <span>10</span></button>
+      </div>
+    </section>
+
+    <div class="catalog-grid" id="catalog">
+      <div class="catalog-column">
+        <section class="category-card" data-category="renew" data-title="PEPTÍDEOS — RENEW" aria-labelledby="titulo-renew">
+          <div class="category-header">
+            <h2 id="titulo-renew"><span class="ornament" aria-hidden="true">✦</span> PEPTÍDEOS — RENEW</h2>
+            <span class="section-count">26 itens</span>
+          </div>
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Tabela de PEPTÍDEOS — RENEW">
+            <table class="product-table type-regular">
+              <thead><tr><th scope="col">PRODUTO</th><th scope="col">APRESENTAÇÃO</th><th scope="col">PREÇO</th></tr></thead>
+              <tbody>
+                <tr><td class="product-name">GHK-CU</td><td class="presentation">50MG</td><td class="price"><data value="539">R$ 539,00</data></td></tr>
+                <tr><td class="product-name">GHK-CU</td><td class="presentation">100MG</td><td class="price"><data value="589">R$ 589,00</data></td></tr>
+                <tr><td class="product-name">IPAMORELIN</td><td class="presentation">10MG</td><td class="price"><data value="599">R$ 599,00</data></td></tr>
+                <tr><td class="product-name">BPC 157</td><td class="presentation">10MG</td><td class="price"><data value="529">R$ 529,00</data></td></tr>
+                <tr><td class="product-name">TB 500</td><td class="presentation">10MG</td><td class="price"><data value="529">R$ 529,00</data></td></tr>
+                <tr><td class="product-name">FRAG 176</td><td class="presentation">10MG</td><td class="price"><data value="629">R$ 629,00</data></td></tr>
+                <tr><td class="product-name">FRAG 176</td><td class="presentation">15MG</td><td class="price"><data value="669">R$ 669,00</data></td></tr>
+                <tr><td class="product-name">PT 141</td><td class="presentation">10MG</td><td class="price"><data value="629">R$ 629,00</data></td></tr>
+                <tr><td class="product-name">GLOW</td><td class="presentation">70MG</td><td class="price"><data value="669">R$ 669,00</data></td></tr>
+                <tr><td class="product-name">KLOW</td><td class="presentation">80MG</td><td class="price"><data value="669">R$ 669,00</data></td></tr>
+                <tr><td class="product-name">MOTS</td><td class="presentation">10MG</td><td class="price"><data value="669">R$ 669,00</data></td></tr>
+                <tr><td class="product-name">DSIP</td><td class="presentation">10MG</td><td class="price"><data value="669">R$ 669,00</data></td></tr>
+                <tr><td class="product-name">CJC + IPA</td><td class="presentation">5MG</td><td class="price"><data value="669">R$ 669,00</data></td></tr>
+                <tr><td class="product-name">EPITHALON</td><td class="presentation">10MG</td><td class="price"><data value="669">R$ 669,00</data></td></tr>
+                <tr><td class="product-name">SS31</td><td class="presentation">10MG</td><td class="price"><data value="669">R$ 669,00</data></td></tr>
+                <tr><td class="product-name">AOD 960</td><td class="presentation">10MG</td><td class="price"><data value="669">R$ 669,00</data></td></tr>
+                <tr><td class="product-name">BB 10</td><td class="presentation">10MG</td><td class="price"><data value="669">R$ 669,00</data></td></tr>
+                <tr><td class="product-name">SELANX</td><td class="presentation">10MG</td><td class="price"><data value="669">R$ 669,00</data></td></tr>
+                <tr><td class="product-name">SEMAX</td><td class="presentation">10MG</td><td class="price"><data value="669">R$ 669,00</data></td></tr>
+                <tr><td class="product-name">NAD+</td><td class="presentation">500</td><td class="price"><data value="669">R$ 669,00</data></td></tr>
+                <tr><td class="product-name">SLUP 332</td><td class="presentation">10MG</td><td class="price"><data value="669">R$ 669,00</data></td></tr>
+                <tr><td class="product-name">KISSPEPTIN</td><td class="presentation">10MG</td><td class="price"><data value="669">R$ 669,00</data></td></tr>
+                <tr><td class="product-name">KPV</td><td class="presentation">10MG</td><td class="price"><data value="669">R$ 669,00</data></td></tr>
+                <tr><td class="product-name">WOLVERINE</td><td class="presentation">10MG</td><td class="price"><data value="669">R$ 669,00</data></td></tr>
+                <tr><td class="product-name">CBL 514</td><td class="presentation">60MG</td><td class="price"><data value="729">R$ 729,00</data></td></tr>
+                <tr><td class="product-name">TESAMORELIN</td><td class="presentation">10MG</td><td class="price"><data value="729">R$ 729,00</data></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section class="category-card" data-category="cosmeticos" data-title="PEPTÍDEOS / COSMÉTICOS" aria-labelledby="titulo-cosmeticos">
+          <div class="category-header">
+            <h2 id="titulo-cosmeticos"><span class="ornament" aria-hidden="true">✦</span> PEPTÍDEOS / COSMÉTICOS</h2>
+            <span class="section-count">8 itens</span>
+          </div>
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Tabela de PEPTÍDEOS / COSMÉTICOS">
+            <table class="product-table type-brand">
+              <thead><tr><th scope="col">MARCA</th><th scope="col">PRODUTO</th><th scope="col">PREÇO</th></tr></thead>
+              <tbody>
+                <tr><td class="brand-name">ALLUVI</td><td class="product-name">CANETA GLOW ALLUVI</td><td class="price"><data value="1269">R$ 1.269,00</data></td></tr>
+                <tr><td class="brand-name">SYNDECA</td><td class="product-name">CANETA SYNDECA NAD+ B12</td><td class="price"><data value="1299">R$ 1.299,00</data></td></tr>
+                <tr><td class="brand-name">ALLUVI</td><td class="product-name">SERUM GLOW ALLUVI</td><td class="price"><data value="629">R$ 629,00</data></td></tr>
+                <tr><td class="brand-name">SERUM</td><td class="product-name">SERUM GHK-CU</td><td class="price"><data value="599">R$ 599,00</data></td></tr>
+                <tr><td class="brand-name">SERUM</td><td class="product-name">SERUM VL</td><td class="price"><data value="609">R$ 609,00</data></td></tr>
+                <tr><td class="brand-name">SERUM</td><td class="product-name">SERUM FACIAL</td><td class="price"><data value="439">R$ 439,00</data></td></tr>
+                <tr><td class="brand-name">SERUM</td><td class="product-name">SERUM MOUSSE</td><td class="price"><data value="519">R$ 519,00</data></td></tr>
+                <tr><td class="brand-name">LINE BODY</td><td class="product-name">LINE BODY</td><td class="price"><data value="1519">R$ 1.519,00</data></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section class="category-card" data-category="toxina" data-title="TOXINA BOTULÍNICA" aria-labelledby="titulo-toxina">
+          <div class="category-header">
+            <h2 id="titulo-toxina"><span class="ornament" aria-hidden="true">✦</span> TOXINA BOTULÍNICA</h2>
+            <span class="section-count">2 itens</span>
+          </div>
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Tabela de TOXINA BOTULÍNICA">
+            <table class="product-table type-brand">
+              <thead><tr><th scope="col">MARCA</th><th scope="col">PRODUTO</th><th scope="col">PREÇO</th></tr></thead>
+              <tbody>
+                <tr><td class="brand-name">DYSPORT</td><td class="product-name">BOTOX DYSPORT</td><td class="price"><data value="700">R$ 700,00</data></td></tr>
+                <tr><td class="brand-name">HUTOS</td><td class="product-name">BOTOX HUTOS</td><td class="price"><data value="859">R$ 859,00</data></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+      <div class="catalog-column">
+        <section class="category-card" data-category="oxygen" data-title="PEPTÍDEOS — OXYGEN" aria-labelledby="titulo-oxygen">
+          <div class="category-header">
+            <h2 id="titulo-oxygen"><span class="ornament" aria-hidden="true">✦</span> PEPTÍDEOS — OXYGEN</h2>
+            <span class="section-count">28 itens</span>
+          </div>
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Tabela de PEPTÍDEOS — OXYGEN">
+            <table class="product-table type-regular">
+              <thead><tr><th scope="col">PRODUTO</th><th scope="col">APRESENTAÇÃO</th><th scope="col">PREÇO</th></tr></thead>
+              <tbody>
+                <tr><td class="product-name">GHK-CU</td><td class="presentation">50MG PÓ/DILUI</td><td class="price"><data value="689">R$ 689,00</data></td></tr>
+                <tr><td class="product-name">GHK-CU</td><td class="presentation">100MG PÓ/DILUI</td><td class="price"><data value="799">R$ 799,00</data></td></tr>
+                <tr><td class="product-name">TESAMORELIN</td><td class="presentation">20MG</td><td class="price"><data value="849">R$ 849,00</data></td></tr>
+                <tr><td class="product-name">TB 500 + BPC 157</td><td class="presentation">20MG</td><td class="price"><data value="929">R$ 929,00</data></td></tr>
+                <tr><td class="product-name">TB500</td><td class="presentation">10MG</td><td class="price"><data value="849">R$ 849,00</data></td></tr>
+                <tr><td class="product-name">AOD9604</td><td class="presentation">5MG</td><td class="price"><data value="829">R$ 829,00</data></td></tr>
+                <tr><td class="product-name">CJC 1295 + IPAMORELIN</td><td class="presentation">5MG</td><td class="price"><data value="849">R$ 849,00</data></td></tr>
+                <tr><td class="product-name">HGH FRAG 176-191</td><td class="presentation">10MG</td><td class="price"><data value="949">R$ 949,00</data></td></tr>
+                <tr><td class="product-name">HGH</td><td class="presentation">10UI X 5 AMPOLAS</td><td class="price"><data value="1169">R$ 1.169,00</data></td></tr>
+                <tr><td class="product-name">IPAMORELIN</td><td class="presentation">10MG</td><td class="price"><data value="839">R$ 839,00</data></td></tr>
+                <tr><td class="product-name">SLU PP 332</td><td class="presentation">5MG</td><td class="price"><data value="829">R$ 829,00</data></td></tr>
+                <tr><td class="product-name">PT 141</td><td class="presentation">--</td><td class="price"><data value="839">R$ 839,00</data></td></tr>
+                <tr><td class="product-name">MOTS C</td><td class="presentation">10MG</td><td class="price"><data value="829">R$ 829,00</data></td></tr>
+                <tr><td class="product-name">KISSPEPTIN</td><td class="presentation">10MG</td><td class="price"><data value="1019">R$ 1.019,00</data></td></tr>
+                <tr><td class="product-name">DSIP</td><td class="presentation">5MG</td><td class="price"><data value="819">R$ 819,00</data></td></tr>
+                <tr><td class="product-name">KPV</td><td class="presentation">10MG</td><td class="price"><data value="839">R$ 839,00</data></td></tr>
+                <tr><td class="product-name">SS31</td><td class="presentation">--</td><td class="price"><data value="839">R$ 839,00</data></td></tr>
+                <tr><td class="product-name">EPHHALON</td><td class="presentation">50MG</td><td class="price"><data value="869">R$ 869,00</data></td></tr>
+                <tr><td class="product-name">KLOW</td><td class="presentation">80MG</td><td class="price"><data value="999">R$ 999,00</data></td></tr>
+                <tr><td class="product-name">GLOW</td><td class="presentation">70MG</td><td class="price"><data value="999">R$ 999,00</data></td></tr>
+                <tr><td class="product-name">CAGRISEMA</td><td class="presentation">--</td><td class="price"><data value="999">R$ 999,00</data></td></tr>
+                <tr><td class="product-name">SEMAX</td><td class="presentation">--</td><td class="price"><data value="845">R$ 845,00</data></td></tr>
+                <tr><td class="product-name">SELANK</td><td class="presentation">--</td><td class="price"><data value="845">R$ 845,00</data></td></tr>
+                <tr><td class="product-name">CBL</td><td class="presentation">5MG</td><td class="price"><data value="545">R$ 545,00</data></td></tr>
+                <tr><td class="product-name">NANDROGEN</td><td class="presentation">250</td><td class="price"><data value="529">R$ 529,00</data></td></tr>
+                <tr><td class="product-name">SUSTAGEN</td><td class="presentation">250</td><td class="price"><data value="529">R$ 529,00</data></td></tr>
+                <tr><td class="product-name">TEXAGEN</td><td class="presentation">200</td><td class="price"><data value="529">R$ 529,00</data></td></tr>
+                <tr><td class="product-name">PRIMOGEN</td><td class="presentation">--</td><td class="price"><data value="845">R$ 845,00</data></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section class="category-card" data-category="agua" data-title="ÁGUA BACTERIOSTÁTICA" aria-labelledby="titulo-agua">
+          <div class="category-header">
+            <h2 id="titulo-agua"><span class="ornament" aria-hidden="true">✦</span> ÁGUA BACTERIOSTÁTICA</h2>
+            <span class="section-count">1 itens</span>
+          </div>
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Tabela de ÁGUA BACTERIOSTÁTICA">
+            <table class="product-table type-regular">
+              <thead><tr><th scope="col">PRODUTO</th><th scope="col">APRESENTAÇÃO</th><th scope="col">PREÇO</th></tr></thead>
+              <tbody>
+                <tr><td class="product-name">ÁGUA BACTERIOSTÁTICA</td><td class="presentation">3ML</td><td class="price"><data value="25">R$ 25,00</data></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section class="category-card" data-category="demais" data-title="DEMAIS PRODUTOS" aria-labelledby="titulo-demais">
+          <div class="category-header">
+            <h2 id="titulo-demais"><span class="ornament" aria-hidden="true">✦</span> DEMAIS PRODUTOS</h2>
+            <span class="section-count">10 itens</span>
+          </div>
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Tabela de DEMAIS PRODUTOS">
+            <table class="product-table type-other">
+              <thead><tr><th scope="col">PRODUTO</th><th scope="col">PREÇO</th></tr></thead>
+              <tbody>
+                <tr><td class="product-name">SCUPTRA</td><td class="price"><data value="1459">R$ 1.459,00</data></td></tr>
+                <tr><td class="product-name">TODO CANN CBO</td><td class="price"><data value="930">R$ 930,00</data></td></tr>
+                <tr><td class="product-name">DR ALTHEA 147</td><td class="price"><data value="500">R$ 500,00</data></td></tr>
+                <tr><td class="product-name">DR ALTHEA 345</td><td class="price"><data value="500">R$ 500,00</data></td></tr>
+                <tr><td class="product-name">CELLMAX VITA</td><td class="price"><data value="349">R$ 349,00</data></td></tr>
+                <tr><td class="product-name">NUMBUZIN NO9</td><td class="price"><data value="349">R$ 349,00</data></td></tr>
+                <tr><td class="product-name">SKIN 1004</td><td class="price"><data value="360">R$ 360,00</data></td></tr>
+                <tr><td class="product-name">MEDICUBE PINK</td><td class="price"><data value="360">R$ 360,00</data></td></tr>
+                <tr><td class="product-name">MEDICUBE ZERO</td><td class="price"><data value="380">R$ 380,00</data></td></tr>
+                <tr><td class="product-name">LISPAX 30MG</td><td class="price"><data value="480">R$ 480,00</data></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="empty" id="empty" hidden>
+      <div class="empty-icon" aria-hidden="true">⌕</div>
+      <h2>Nenhum produto encontrado</h2>
+      <p>Tente outro nome, marca ou apresentação, ou limpe os filtros.</p>
+      <button class="reset-button" type="button" id="reset">Limpar filtros</button>
+    </div>
+
+    <footer>Dados reproduzidos da tabela original enviada. Valores em reais (BRL).</footer>
+  </main>
+  <script>
+    (() => {
+      'use strict';
+      const search = document.getElementById('search');
+      const clearSearch = document.getElementById('clear-search');
+      const result = document.getElementById('results');
+      const empty = document.getElementById('empty');
+      const catalog = document.getElementById('catalog');
+      const cards = [...document.querySelectorAll('.category-card')];
+      const columns = [...document.querySelectorAll('.catalog-column')];
+      const chips = [...document.querySelectorAll('.filter-chip')];
+      let selected = 'all';
+
+      const normalize = text => String(text).normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      const compact = text => text.replace(/\s+/g, '');
+
+      function update() {
+        const query = normalize(search.value);
+        let count = 0;
+        cards.forEach(card => {
+          const selectedCategory = selected === 'all' || selected === card.dataset.category;
+          const title = card.dataset.title;
+          let cardCount = 0;
+          card.querySelectorAll('tbody tr').forEach(row => {
+            const value = normalize(`${title} ${row.textContent}`);
+            const match = !query || value.includes(query) || compact(value).includes(compact(query));
+            const visible = selectedCategory && match;
+            row.hidden = !visible;
+            if (visible) { count++; cardCount++; }
+          });
+          card.hidden = cardCount === 0;
+          const sectionCount = card.querySelector('.section-count');
+          sectionCount.textContent = `${cardCount} ${cardCount === 1 ? 'item' : 'itens'}`;
+        });
+        columns.forEach(column => {
+          column.hidden = !column.querySelector('.category-card:not([hidden])');
+        });
+        catalog.classList.toggle('is-one-column', columns.filter(column => !column.hidden).length === 1);
+        catalog.hidden = count === 0;
+        empty.hidden = count !== 0;
+        clearSearch.hidden = search.value.length === 0;
+        result.innerHTML = `<strong>${count}</strong> ${count === 1 ? 'item encontrado' : 'itens encontrados'}`;
+      }
+
+      function reset() {
+        selected = 'all';
+        search.value = '';
+        chips.forEach(chip => chip.setAttribute('aria-pressed', String(chip.dataset.filter === 'all')));
+        update();
+        search.focus();
+      }
+
+      search.addEventListener('input', update);
+      clearSearch.addEventListener('click', () => { search.value = ''; update(); search.focus(); });
+      document.getElementById('reset').addEventListener('click', reset);
+      chips.forEach(chip => chip.addEventListener('click', () => {
+        selected = chip.dataset.filter;
+        chips.forEach(item => item.setAttribute('aria-pressed', String(item === chip)));
+        update();
+      }));
+      document.addEventListener('keydown', event => {
+        if (event.key === '/' && !['INPUT','TEXTAREA'].includes(document.activeElement.tagName)) {
+          event.preventDefault(); search.focus();
+        } else if (event.key === 'Escape' && document.activeElement === search) {
+          search.value = ''; update(); search.blur();
+        }
+      });
+      update();
+    })();
+  </script>
+</body>
+</html>
